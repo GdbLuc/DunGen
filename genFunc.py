@@ -1,6 +1,6 @@
 from math import sin
 
-def target_weight_and_interval(maze_length, maze_actual_weight):
+def function(maze_length, maze_actual_weight):
     completion = maze_actual_weight / maze_length
     completion *= 100
     # func

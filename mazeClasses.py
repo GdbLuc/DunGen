@@ -2,7 +2,7 @@ from random import randint
 from json import *
 from turtle import *
 
-from genFunc import target_weight_and_interval as twai1
+from genFunc import function as func
 
 class TurtleCompatible:
     @staticmethod
@@ -198,8 +198,11 @@ class Tile(TurtleCompatible):
             color("#000000")
 
     def get_compiled(self):
-        return {"allocation": None, "relative_pos": self.relative_pos, "content": self.content,
+        dic = {"relative_pos": self.relative_pos,
                 "walls": {wall.get_side(): wall.get_wall_type() for wall in self.walls.values()}}
+        if self.content is not None:
+            dic["content"] = self.content
+        return dic
 
 
 class Room(TurtleCompatible):
@@ -435,22 +438,28 @@ class Maze(TurtleCompatible):
         return False  # dummy
 
     def select_rooms(self, weight, selection_mode = ""):
-        if selection_mode == "ModelFunction1":
-            target, interval = twai1(self.length, weight)
-            selecteds = [room for room in self.rooms if target - interval >= room.get_weight() >= target + interval]
-            return selecteds
+        selectedr = []
+        if selection_mode == "genFunc.func":
+            target, interval = func(self.length, weight)
+            selectedr = [room for room in self.source if target - interval >= room.get_weight() >= target + interval]
+        if selection_mode == "randomPonderatedWeight":
+            total_weight = 0
+            for room in self.source:
+                total_weight += room.get_weight()
+
         else:
-            return self.source
+            selectedr = self.source
+        if len(selectedr) == 0:
+            selectedr = self.source
+            print("not enough room ... taking to source")
+        return selectedr
 
     def create(self):
         weight = 0
         tries = 0
         while weight < self.length and tries < 1000:  # proper maze construction
             rooms_len = len(self.rooms)
-            possible_rooms = self.select_rooms(weight = weight, selection_mode="ModelFunction1")
-            if len(possible_rooms) == 0:
-                possible_rooms = self.source
-                print("not enough room ... taking to source")
+            possible_rooms = self.select_rooms(weight = weight, selection_mode="genFunc.func")
             selected_room = possible_rooms[randint(0, len(possible_rooms) - 1)].copy()
             self.insert(self.door_queue[randint(0, len(self.door_queue) - 1)], selected_room)
             if len(self.rooms) != rooms_len:
@@ -471,7 +480,7 @@ class Maze(TurtleCompatible):
             self.rooms[-1].draw(self.draw_size)
         if weight >= self.length:
             print("maze successfully constructed")
-            self.post_creation_fill(3)
+            self.post_creation_fill(0)
         else:
             print("Maze creation aborded. Tries limit reached. Weight :", weight)
 
@@ -595,7 +604,9 @@ class DFS:
         self.explored.append(self.index)
         print("To explore :", self.to_explore, ". Explored :", self.explored)
 
-    def map(self, goal="end"):
+    def map(self, goal="end", draw = None):
+        if draw is not None:
+            self.maze.init_turtle()
         if goal is None:
             while len(self.explored) != len(self.maze.get_rooms()):
                 pass  # to do
@@ -605,3 +616,7 @@ class DFS:
                 if len(self.explored) != len(self.maze.get_rooms()):
                     self.index = self.to_explore[-1]
                 print("Place :", self.index, ". Inventory :", self.items)
+                if draw is not None:
+                    self.maze.get_rooms()[self.explored[-1]].draw(draw)
+        if draw is not None:
+            self.maze.terminate()
